@@ -16,6 +16,38 @@ import java.util.List;
 public interface DeviceAttrInfoMapper extends BaseMapper<DeviceAttrInfo> {
 
     /**
+     * 手写分页查询设备属性记录。
+     */
+    @Select({
+            "<script>",
+            "SELECT ",
+            "device_id AS deviceId, ",
+            "acquire_timestamp_format AS acquireTimestampFormat, ",
+            "device_type AS deviceType, ",
+            "parent_id AS parentId, ",
+            "acquire_timestamp AS acquireTimestamp, ",
+            "properties, ",
+            "tid, ",
+            "bid, ",
+            "method, ",
+            "product_key AS productKey, ",
+            "version, ",
+            "type, ",
+            "update_time AS updateTime ",
+            "FROM dwd_device_attr_info ",
+            "WHERE device_id = #{deviceId} ",
+            "<if test='startTime != null and startTime != \"\"'>",
+            "AND acquire_timestamp_format &gt;= #{startTime} ",
+            "</if>",
+            "LIMIT #{offset}, #{limit} ",
+            "</script>"
+    })
+    List<DeviceAttrInfo> selectPageRecords(@Param("deviceId") String deviceId,
+                                           @Param("startTime") String startTime,
+                                           @Param("offset") long offset,
+                                           @Param("limit") int limit);
+
+    /**
      * 按设备 ID 和采集时间范围查询设备属性记录。
      */
     @Select("SELECT "

@@ -3,7 +3,6 @@ package com.jingansi.uav.engine.api.controller;
 import com.jingansi.uav.engine.biz.device.attr.export.DeviceAttrInfoExportService;
 import com.jingansi.uav.engine.biz.device.attr.query.DeviceAttrInfoQueryService;
 import com.jingansi.uav.engine.biz.flight.statistics.export.DorisFlightStatisticsExportService;
-import com.jingansi.uav.engine.common.dto.PageResultDTO;
 import com.jingansi.uav.engine.common.dto.doris.DeviceAttrInfoLatestRecordDTO;
 import com.jingansi.uav.engine.common.dto.doris.DeviceAttrInfoExportTaskDTO;
 import com.jingansi.uav.engine.common.vo.Response;
@@ -17,6 +16,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * Doris 设备属性导出接口。
@@ -65,10 +66,8 @@ public class DeviceAttrInfoController {
      * 分页查询设备属性数据，并按请求字段提取返回。
      */
     @PostMapping("/page")
-    public Response<PageResultDTO<DeviceAttrInfoLatestRecordDTO>> page(@RequestBody(required = false) DeviceAttrInfoLatestQueryRequest request) {
+    public Response<List<DeviceAttrInfoLatestRecordDTO>> page(@RequestBody(required = false) DeviceAttrInfoLatestQueryRequest request) {
         return Response.returnByCode(deviceAttrInfoQueryService.page(request));
     }
-
-
 
 }

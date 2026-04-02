@@ -21,6 +21,12 @@ public class DeviceAttrInfoLatestQueryRequest {
     private String deviceId;
 
     /**
+     * 开始时间，格式 yyyy-MM-dd HH:mm:ss 或 yyyy-MM-dd HH:mm:ss.SSSSSS。
+     */
+    @JsonAlias({"beginTime"})
+    private String startTime;
+
+    /**
      * 需要从 properties 中提取的字段列表。
      */
     private List<String> propertiesTypes;

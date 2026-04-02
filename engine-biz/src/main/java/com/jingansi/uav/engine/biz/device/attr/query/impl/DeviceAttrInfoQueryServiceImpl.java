@@ -1,14 +1,11 @@
 package com.jingansi.uav.engine.biz.device.attr.query.impl;
 
 import com.baomidou.dynamic.datasource.annotation.DS;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jingansi.uav.engine.biz.device.attr.query.DeviceAttrInfoQueryService;
 import com.jingansi.uav.engine.common.bo.Result;
 import com.jingansi.uav.engine.common.constant.DataSourceNames;
-import com.jingansi.uav.engine.common.dto.PageResultDTO;
 import com.jingansi.uav.engine.common.dto.doris.DeviceAttrInfoLatestRecordDTO;
 import com.jingansi.uav.engine.common.vo.doris.DeviceAttrInfoLatestQueryRequest;
 import com.jingansi.uav.engine.dao.entity.DeviceAttrInfo;
@@ -19,7 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -38,37 +39,32 @@ public class DeviceAttrInfoQueryServiceImpl implements DeviceAttrInfoQueryServic
 
     private static final int DEFAULT_PAGE_NUM = 1;
     private static final int DEFAULT_PAGE_SIZE = 20;
-    private static final int MAX_PAGE_SIZE = 500;
+    private static final int MAX_QUERY_COUNT = 1000;
+    private static final DateTimeFormatter SECOND_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter MICROSECOND_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
 
     private final DeviceAttrInfoMapper deviceAttrInfoMapper;
     private final ObjectMapper objectMapper;
 
     @Override
-    public Result<PageResultDTO<DeviceAttrInfoLatestRecordDTO>> page(DeviceAttrInfoLatestQueryRequest request) {
-        if (request == null) {
-            return Result.error("请求参数不能为空");
+    public Result<List<DeviceAttrInfoLatestRecordDTO>> page(DeviceAttrInfoLatestQueryRequest request) {
+        Result<Void> validationResult = validatePageRequest(request);
+        if (!validationResult.isSuccess()) {
+            return Result.error(validationResult.getMsg());
         }
         String deviceId = normalizeText(request.getDeviceId());
-        if (!StringUtils.hasText(deviceId)) {
-            return Result.error("deviceId不能为空");
-        }
-
         List<String> propertiesTypes = resolvePropertiesTypes(request);
-        if (CollectionUtils.isEmpty(propertiesTypes)) {
-            return Result.error("propertiesType不能为空");
-        }
-
         int pageNum = resolvePageNum(request);
         int pageSize = resolvePageSize(request);
-        Page<DeviceAttrInfo> page = new Page<>(pageNum, pageSize);
-        LambdaQueryWrapper<DeviceAttrInfo> queryWrapper = new LambdaQueryWrapper<DeviceAttrInfo>()
-                .eq(DeviceAttrInfo::getDeviceId, deviceId)
-                .orderByDesc(DeviceAttrInfo::getAcquireTimestamp, DeviceAttrInfo::getAcquireTimestampFormat);
-        Page<DeviceAttrInfo> pageResult = deviceAttrInfoMapper.selectPage(page, queryWrapper);
-        List<DeviceAttrInfoLatestRecordDTO> result = pageResult.getRecords().stream()
+        String startTime = normalizeText(request.getStartTime());
+        long offset = (long) (pageNum - 1) * pageSize;
+        List<DeviceAttrInfo> records = deviceAttrInfoMapper.selectPageRecords(deviceId, startTime, offset, pageSize);
+        records.sort(Comparator
+                .comparing(DeviceAttrInfo::getAcquireTimestampFormat, Comparator.nullsLast(String::compareTo)));
+        List<DeviceAttrInfoLatestRecordDTO> result = records.stream()
                 .map(item -> toLatestRecord(item, propertiesTypes))
                 .collect(Collectors.toList());
-        return Result.ok(buildPageResult(pageResult, result));
+        return Result.ok(result);
     }
 
     /**
@@ -92,21 +88,30 @@ public class DeviceAttrInfoQueryServiceImpl implements DeviceAttrInfoQueryServic
         return new ArrayList<>(keys);
     }
 
-    private PageResultDTO<DeviceAttrInfoLatestRecordDTO> buildPageResult(Page<DeviceAttrInfo> pageResult,
-                                                                         List<DeviceAttrInfoLatestRecordDTO> records) {
-        long totalPages = pageResult.getPages();
-        return PageResultDTO.<DeviceAttrInfoLatestRecordDTO>builder()
-                .pageNum((int) pageResult.getCurrent())
-                .pageSize((int) pageResult.getSize())
-                .total(pageResult.getTotal())
-                .totalPages(totalPages > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalPages)
-                .hasMore(pageResult.getCurrent() < pageResult.getPages())
-                .records(records)
-                .build();
-    }
-
     private String normalizeText(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private Result<Void> validatePageRequest(DeviceAttrInfoLatestQueryRequest request) {
+        if (request == null) {
+            return Result.error("请求参数不能为空");
+        }
+        String deviceId = normalizeText(request.getDeviceId());
+        if (!StringUtils.hasText(deviceId)) {
+            return Result.error("deviceId不能为空");
+        }
+        if (CollectionUtils.isEmpty(resolvePropertiesTypes(request))) {
+            return Result.error("propertiesType不能为空");
+        }
+        int pageNum = resolvePageNum(request);
+        int pageSize = resolvePageSize(request);
+        if ((long) pageNum * pageSize > MAX_QUERY_COUNT) {
+            return Result.error("分页数据最多只能查询1000条");
+        }
+        if (StringUtils.hasText(request.getStartTime()) && !isValidDateTime(request.getStartTime())) {
+            return Result.error("startTime格式错误，要求yyyy-MM-dd HH:mm:ss或yyyy-MM-dd HH:mm:ss.SSSSSS");
+        }
+        return Result.ok();
     }
 
     /**
@@ -118,14 +123,30 @@ public class DeviceAttrInfoQueryServiceImpl implements DeviceAttrInfoQueryServic
     }
 
     /**
-     * 规范分页大小，避免单次请求拉太多。
+     * 规范分页大小，非法值统一按默认值处理。
      */
     private int resolvePageSize(DeviceAttrInfoLatestQueryRequest request) {
         Integer pageSize = request.getPageSize();
         if (pageSize == null || pageSize < 1) {
             return DEFAULT_PAGE_SIZE;
         }
-        return Math.min(pageSize, MAX_PAGE_SIZE);
+        return pageSize;
+    }
+
+    private boolean isValidDateTime(String value) {
+        String trimmed = value == null ? null : value.trim();
+        if (!StringUtils.hasText(trimmed)) {
+            return false;
+        }
+        for (DateTimeFormatter formatter : new DateTimeFormatter[]{SECOND_FORMATTER, MICROSECOND_FORMATTER}) {
+            try {
+                LocalDateTime.parse(trimmed, formatter);
+                return true;
+            } catch (DateTimeParseException ex) {
+                // try next formatter
+            }
+        }
+        return false;
     }
 
     /**
