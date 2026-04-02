@@ -23,7 +23,7 @@ public class DeviceAttrInfoLatestQueryRequest {
     /**
      * 开始时间，格式 yyyy-MM-dd HH:mm:ss 或 yyyy-MM-dd HH:mm:ss.SSSSSS。
      */
-    @JsonAlias({"beginTime"})
+
     private String startTime;
 
     /**
