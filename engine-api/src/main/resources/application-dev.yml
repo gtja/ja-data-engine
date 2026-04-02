@@ -1,0 +1,78 @@
+server:
+  port: 32032
+  tomcat:
+    accesslog:
+      enabled: true
+      prefix: access
+      suffix: .log
+      pattern: '%h %l %u %t "%r" %s %b "%{Referer}i" "%{username}i" %D ms'
+      rotate: true
+      directory: /Users/wangyongzhen/JA-UAV-Data-Engine/logs
+      max-days: 15
+
+spring:
+  datasource:
+    dynamic:
+      primary: mysql
+      strict: false
+      datasource:
+        mysql:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://47.111.155.82:31306/dushu-v3?useUnicode=true&characterEncoding=UTF-8&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Shanghai&failOverReadOnly=false&useSSL=false
+          username: root
+          password: jingansi110
+        doris:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://47.111.155.82:31031/dushu?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+          username: root
+          password: Jingansi@110
+
+  redis:
+    host: 47.111.155.82
+    database: 15
+    port: 32379
+    password: jingansi110
+  kafka:
+    bootstrap-servers: 172.21.30.201:30090
+    producer:
+      retries: 0
+      batch-size: 16384
+      buffer-memory: 33554432
+      acks: 1
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: control_center_dev
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual
+
+mybatis-plus:
+  mapper-locations: classpath:mapping/**.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+mqtt:
+  address: -----
+  clientId: ja-control-center-3.0-maye11
+  username: emqx_test
+  password: ----------
+  keepAlive: 60
+  timeout: 60
+#  保证为 2 的n次幂
+  workerCount: 16
+  queueCapacity: 2048
+  topic:
+    - sys/+/+/thing/event/property/post
+s3:
+  endpoint: ---
+  accessKey: ---
+  secretKey: ---
+  bucketName: --
+  prefix: -----
+  externalPrefix: http://47.111.155.82:32205/storage
+
+logging:
+  level:
+    com.jingansi.uav.engine: info

@@ -1,0 +1,3 @@
+logging:
+  level:
+    com.jingansi.uav.engine.biz.mqtt: DEBUG
