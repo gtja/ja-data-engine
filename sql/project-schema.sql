@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `async_export_task` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
   `task_no` VARCHAR(64) NOT NULL COMMENT '任务编号',
   `export_type` VARCHAR(64) NOT NULL COMMENT '导出类型',
+  `device_id` VARCHAR(64) DEFAULT NULL COMMENT '设备ID',
   `task_status` TINYINT NOT NULL DEFAULT 0 COMMENT '任务状态：0待处理，1执行中，2成功，3失败',
   `file_name` VARCHAR(255) DEFAULT NULL COMMENT '文件名',
   `bucket_name` VARCHAR(128) DEFAULT NULL COMMENT 'S3 bucket',
@@ -22,8 +23,14 @@ CREATE TABLE IF NOT EXISTS `async_export_task` (
   `gmt_modified_by` VARCHAR(64) DEFAULT NULL COMMENT '修改人',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_async_export_task_no` (`task_no`),
-  KEY `idx_async_export_task_type_status` (`export_type`, `task_status`, `gmt_create`)
+  KEY `idx_async_export_task_type_status` (`export_type`, `task_status`, `gmt_create`),
+  KEY `idx_async_export_task_type_device_create` (`export_type`, `device_id`, `gmt_create`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='异步导出任务表';
+
+-- 已有数据库升级时执行：
+-- ALTER TABLE `async_export_task`
+--   ADD COLUMN `device_id` VARCHAR(64) DEFAULT NULL COMMENT '设备ID' AFTER `export_type`,
+--   ADD KEY `idx_async_export_task_type_device_create` (`export_type`, `device_id`, `gmt_create`);
 
 -- 设备飞行架次边界状态表
 -- total_flight_* 存储“上次已完成架次”的累计值，用于在架次变化时做差分。

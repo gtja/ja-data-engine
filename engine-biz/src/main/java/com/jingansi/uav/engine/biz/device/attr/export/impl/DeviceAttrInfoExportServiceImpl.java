@@ -7,8 +7,11 @@ import com.jingansi.uav.engine.biz.device.attr.export.DeviceAttrInfoExportServic
 import com.jingansi.uav.engine.biz.infrastructure.export.AsyncExportCommonService;
 import com.jingansi.uav.engine.common.bo.Result;
 import com.jingansi.uav.engine.common.constant.DataSourceNames;
+import com.jingansi.uav.engine.common.dto.PageResultDTO;
 import com.jingansi.uav.engine.common.dto.doris.DeviceAttrInfoExportTaskDTO;
+import com.jingansi.uav.engine.common.enums.AsyncExportTypeEnum;
 import com.jingansi.uav.engine.common.vo.doris.DeviceAttrInfoExportRequest;
+import com.jingansi.uav.engine.common.vo.export.AsyncExportTaskPageRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,11 +25,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class DeviceAttrInfoExportServiceImpl implements DeviceAttrInfoExportService {
 
-    private static final String EXPORT_TYPE = "DEVICE_ATTR_INFO";
-    private static final int MAX_ACTIVE_TASKS = 2;
-    private static final String FILE_NAME_PREFIX = "device_properties_info";
-    private static final String EXPORT_BIZ_NAME = "设备属性";
-
     private final AsyncExportCommonService asyncExportCommonService;
     private final DeviceAttrInfoExportFileBuilder deviceAttrInfoExportFileBuilder;
     private final DeviceAttrInfoAsyncExportWorker deviceAttrInfoAsyncExportWorker;
@@ -36,10 +34,8 @@ public class DeviceAttrInfoExportServiceImpl implements DeviceAttrInfoExportServ
         // 设备属性导出只需要把自己的配置和处理逻辑传给公共服务即可。
         return asyncExportCommonService.submitExportTask(
                 request,
-                EXPORT_TYPE,
-                MAX_ACTIVE_TASKS,
-                FILE_NAME_PREFIX,
-                EXPORT_BIZ_NAME,
+                request == null ? null : request.getDeviceId(),
+                AsyncExportTypeEnum.DEVICE_ATTR_INFO,
                 deviceAttrInfoExportFileBuilder::validateRequest,
                 deviceAttrInfoAsyncExportWorker::process);
     }
@@ -47,6 +43,11 @@ public class DeviceAttrInfoExportServiceImpl implements DeviceAttrInfoExportServ
     @Override
     public Result<DeviceAttrInfoExportTaskDTO> getExportTask(String taskNo) {
         return asyncExportCommonService.getExportTask(taskNo);
+    }
+
+    @Override
+    public Result<PageResultDTO<DeviceAttrInfoExportTaskDTO>> pageExportTasks(AsyncExportTaskPageRequest request) {
+        return asyncExportCommonService.pageExportTasks(request);
     }
 
     @Override

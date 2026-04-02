@@ -15,6 +15,11 @@ public class DeviceAttrInfoExportTaskDTO {
     private String taskNo;
 
     /**
+     * 导出任务类型。
+     */
+    private String exportType;
+
+    /**
      * 任务状态：0待处理，1执行中，2成功，3失败。
      */
     private Integer taskStatus;

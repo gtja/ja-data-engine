@@ -2,8 +2,10 @@ package com.jingansi.uav.engine.biz.infrastructure.export.impl;
 
 import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jingansi.uav.engine.biz.infrastructure.export.AsyncExportTaskService;
 import com.jingansi.uav.engine.common.constant.DataSourceNames;
+import com.jingansi.uav.engine.common.enums.AsyncExportTypeEnum;
 import com.jingansi.uav.engine.common.enums.AsyncExportTaskStatusEnum;
 import com.jingansi.uav.engine.dao.entity.AsyncExportTask;
 import com.jingansi.uav.engine.dao.mapper.AsyncExportTaskMapper;
@@ -28,11 +30,12 @@ public class AsyncExportTaskServiceImpl implements AsyncExportTaskService {
     private final AsyncExportTaskMapper asyncExportTaskMapper;
 
     @Override
-    public AsyncExportTask createPendingTask(String exportType, String requestPayload, String fileName) {
+    public AsyncExportTask createPendingTask(AsyncExportTypeEnum exportType, String deviceId, String requestPayload, String fileName) {
         Date now = new Date();
         AsyncExportTask task = AsyncExportTask.builder()
                 .taskNo(UUID.randomUUID().toString().replace("-", ""))
-                .exportType(exportType)
+                .exportType(exportType == null ? null : exportType.getCode())
+                .deviceId(StringUtils.hasText(deviceId) ? deviceId.trim() : null)
                 .taskStatus(AsyncExportTaskStatusEnum.PENDING.getCode())
                 .fileName(fileName)
                 .requestPayload(requestPayload)
@@ -56,12 +59,24 @@ public class AsyncExportTaskServiceImpl implements AsyncExportTaskService {
     }
 
     @Override
-    public long countByExportTypeAndStatuses(String exportType, Collection<AsyncExportTaskStatusEnum> statuses) {
-        if (!StringUtils.hasText(exportType) || statuses == null || statuses.isEmpty()) {
+    public Page<AsyncExportTask> pageByExportTypeAndDeviceId(AsyncExportTypeEnum exportType, String deviceId, int pageNum, int pageSize) {
+        Page<AsyncExportTask> page = new Page<>(pageNum, pageSize);
+        if (exportType == null || !StringUtils.hasText(deviceId)) {
+            return page;
+        }
+        return asyncExportTaskMapper.selectPage(page, new LambdaQueryWrapper<AsyncExportTask>()
+                .eq(AsyncExportTask::getExportType, exportType.getCode())
+                .eq(AsyncExportTask::getDeviceId, deviceId.trim())
+                .orderByDesc(AsyncExportTask::getGmtCreate, AsyncExportTask::getId));
+    }
+
+    @Override
+    public long countByExportTypeAndStatuses(AsyncExportTypeEnum exportType, Collection<AsyncExportTaskStatusEnum> statuses) {
+        if (exportType == null || statuses == null || statuses.isEmpty()) {
             return 0L;
         }
         return asyncExportTaskMapper.selectCount(new LambdaQueryWrapper<AsyncExportTask>()
-                .eq(AsyncExportTask::getExportType, exportType)
+                .eq(AsyncExportTask::getExportType, exportType.getCode())
                 .in(AsyncExportTask::getTaskStatus, statuses.stream().map(AsyncExportTaskStatusEnum::getCode).toArray()));
     }
 

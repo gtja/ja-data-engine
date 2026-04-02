@@ -33,6 +33,9 @@ public class AsyncExportTask implements Serializable {
     @TableField("export_type")
     private String exportType;
 
+    @TableField("device_id")
+    private String deviceId;
+
     @TableField("task_status")
     private Integer taskStatus;
 

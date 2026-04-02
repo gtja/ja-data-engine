@@ -1,11 +1,15 @@
 package com.jingansi.uav.engine.biz.infrastructure.export;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jingansi.uav.engine.biz.infrastructure.storage.s3.S3Properties;
 import com.jingansi.uav.engine.common.bo.Result;
+import com.jingansi.uav.engine.common.dto.PageResultDTO;
 import com.jingansi.uav.engine.common.dto.doris.DeviceAttrInfoExportTaskDTO;
+import com.jingansi.uav.engine.common.enums.AsyncExportTypeEnum;
 import com.jingansi.uav.engine.common.enums.AsyncExportTaskStatusEnum;
 import com.jingansi.uav.engine.common.exception.BizException;
+import com.jingansi.uav.engine.common.vo.export.AsyncExportTaskPageRequest;
 import com.jingansi.uav.engine.dao.entity.AsyncExportTask;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +20,9 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 异步导出公共服务。
@@ -41,6 +47,8 @@ import java.util.Objects;
 public class AsyncExportCommonService {
 
     private static final String DEFAULT_BUSY_MESSAGE = "有任务正在查询,请您稍后再试";
+    private static final int DEFAULT_PAGE_NUM = 1;
+    private static final int DEFAULT_PAGE_SIZE = 20;
     private static final EnumSet<AsyncExportTaskStatusEnum> ACTIVE_STATUSES =
             EnumSet.of(AsyncExportTaskStatusEnum.PENDING, AsyncExportTaskStatusEnum.RUNNING);
     private static final DateTimeFormatter FILE_NAME_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -61,18 +69,31 @@ public class AsyncExportCommonService {
      * @param processor 业务自己的异步处理器，通常直接传 worker::process
      */
     public <T> Result<DeviceAttrInfoExportTaskDTO> submitExportTask(T request,
-                                                                    String exportType,
-                                                                    int maxActiveTasks,
-                                                                    String fileNamePrefix,
-                                                                    String exportBizName,
+                                                                    AsyncExportTypeEnum exportType,
                                                                     AsyncExportRequestValidator<T> validator,
                                                                     AsyncExportTaskProcessor<T> processor) {
         return submitExportTask(
                 request,
+                null,
                 exportType,
-                maxActiveTasks,
-                fileNamePrefix,
-                exportBizName,
+                DEFAULT_BUSY_MESSAGE,
+                validator,
+                processor);
+    }
+
+    /**
+     * 提交异步导出任务。
+     * 允许业务方在落库时额外记录 deviceId。
+     */
+    public <T> Result<DeviceAttrInfoExportTaskDTO> submitExportTask(T request,
+                                                                    String deviceId,
+                                                                    AsyncExportTypeEnum exportType,
+                                                                    AsyncExportRequestValidator<T> validator,
+                                                                    AsyncExportTaskProcessor<T> processor) {
+        return submitExportTask(
+                request,
+                deviceId,
+                exportType,
                 DEFAULT_BUSY_MESSAGE,
                 validator,
                 processor);
@@ -83,16 +104,12 @@ public class AsyncExportCommonService {
      * 和上面的重载相比，这里允许业务方自定义“系统繁忙”提示语。
      */
     public <T> Result<DeviceAttrInfoExportTaskDTO> submitExportTask(T request,
-                                                                    String exportType,
-                                                                    int maxActiveTasks,
-                                                                    String fileNamePrefix,
-                                                                    String exportBizName,
+                                                                    String deviceId,
+                                                                    AsyncExportTypeEnum exportType,
                                                                     String busyMessage,
                                                                     AsyncExportRequestValidator<T> validator,
                                                                     AsyncExportTaskProcessor<T> processor) {
-        String normalizedExportType = requireText(exportType, "exportType不能为空");
-        String normalizedFileNamePrefix = requireText(fileNamePrefix, "fileNamePrefix不能为空");
-        String normalizedExportBizName = requireText(exportBizName, "exportBizName不能为空");
+        Objects.requireNonNull(exportType, "exportType不能为空");
         String normalizedBusyMessage = StringUtils.hasText(busyMessage) ? busyMessage.trim() : DEFAULT_BUSY_MESSAGE;
         Objects.requireNonNull(validator, "validator不能为空");
         Objects.requireNonNull(processor, "processor不能为空");
@@ -100,25 +117,28 @@ public class AsyncExportCommonService {
         // 第一步，先走业务自己的参数校验。
         validator.validate(request);
         // 第二步，限制同一导出类型的并发任务数量，避免导出过多拖垮系统。
-        if (asyncExportTaskService.countByExportTypeAndStatuses(normalizedExportType, ACTIVE_STATUSES) >= maxActiveTasks) {
+        if (asyncExportTaskService.countByExportTypeAndStatuses(exportType, ACTIVE_STATUSES) >= exportType.getMaxActiveTasks()) {
             return Result.error(normalizedBusyMessage);
         }
         try {
             // 第三步，把原始请求落库，方便后续排查和任务追踪。
             String requestPayload = objectMapper.writeValueAsString(request);
             AsyncExportTask task = asyncExportTaskService.createPendingTask(
-                    normalizedExportType, requestPayload, buildFileName(normalizedFileNamePrefix));
+                    exportType,
+                    StringUtils.hasText(deviceId) ? deviceId.trim() : null,
+                    requestPayload,
+                    buildFileName(exportType.getFileNamePrefix()));
             // 第四步，交给具体业务自己的 worker 去异步生成文件并上传。
             processor.process(task, request);
             return Result.ok(toTaskDTO(task));
         } catch (TaskRejectedException ex) {
-            log.warn("{}异步导出任务被拒绝", normalizedExportBizName);
+            log.warn("{}异步导出任务被拒绝", exportType.getBizName());
             return Result.error(normalizedBusyMessage);
         } catch (BizException ex) {
             throw ex;
         } catch (Exception ex) {
-            log.error("创建{}异步导出任务失败, exportType={}", normalizedExportBizName, normalizedExportType, ex);
-            return Result.error("创建" + normalizedExportBizName + "异步导出任务失败");
+            log.error("创建{}异步导出任务失败, exportType={}", exportType.getBizName(), exportType.getCode(), ex);
+            return Result.error("创建" + exportType.getBizName() + "异步导出任务失败");
         }
     }
 
@@ -131,6 +151,31 @@ public class AsyncExportCommonService {
             return Result.error("导出任务不存在");
         }
         return Result.ok(toTaskDTO(task));
+    }
+
+    /**
+     * 按导出类型和设备 ID 查询任务列表。
+     */
+    public Result<PageResultDTO<DeviceAttrInfoExportTaskDTO>> pageExportTasks(AsyncExportTaskPageRequest request) {
+        if (request == null) {
+            return Result.error("请求参数不能为空");
+        }
+        AsyncExportTypeEnum exportType = AsyncExportTypeEnum.fromCode(request.getExportType());
+        if (exportType == null) {
+            return Result.error("exportType不合法");
+        }
+        String normalizedDeviceId = requireText(request.getDeviceId(), "deviceId不能为空");
+        int resolvedPageNum = resolvePageNum(request.getPageNum());
+        int resolvedPageSize = resolvePageSize(request.getPageSize());
+        Page<AsyncExportTask> pageResult = asyncExportTaskService.pageByExportTypeAndDeviceId(
+                exportType,
+                normalizedDeviceId,
+                resolvedPageNum,
+                resolvedPageSize);
+        List<DeviceAttrInfoExportTaskDTO> records = pageResult.getRecords().stream()
+                .map(this::toTaskDTO)
+                .collect(Collectors.toList());
+        return Result.ok(buildTaskPageResult(pageResult, records));
     }
 
     /**
@@ -169,6 +214,27 @@ public class AsyncExportCommonService {
         return value.trim();
     }
 
+    private int resolvePageNum(Integer pageNum) {
+        return pageNum == null || pageNum < 1 ? DEFAULT_PAGE_NUM : pageNum;
+    }
+
+    private int resolvePageSize(Integer pageSize) {
+        return pageSize == null || pageSize < 1 ? DEFAULT_PAGE_SIZE : pageSize;
+    }
+
+    private PageResultDTO<DeviceAttrInfoExportTaskDTO> buildTaskPageResult(Page<AsyncExportTask> pageResult,
+                                                                           List<DeviceAttrInfoExportTaskDTO> records) {
+        long totalPages = pageResult.getPages();
+        return PageResultDTO.<DeviceAttrInfoExportTaskDTO>builder()
+                .pageNum((int) pageResult.getCurrent())
+                .pageSize((int) pageResult.getSize())
+                .total(pageResult.getTotal())
+                .totalPages(totalPages > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalPages)
+                .hasMore(pageResult.getCurrent() < pageResult.getPages())
+                .records(records)
+                .build();
+    }
+
     /**
      * 把数据库任务对象转成接口返回 DTO。
      */
@@ -178,6 +244,7 @@ public class AsyncExportCommonService {
                 : null;
         return DeviceAttrInfoExportTaskDTO.builder()
                 .taskNo(task.getTaskNo())
+                .exportType(task.getExportType())
                 .taskStatus(task.getTaskStatus())
                 .fileName(task.getFileName())
                 .downloadUrl(downloadUrl)

@@ -5,6 +5,7 @@ import com.jingansi.uav.engine.biz.infrastructure.export.AsyncExportCommonServic
 import com.jingansi.uav.engine.common.bo.Result;
 import com.jingansi.uav.engine.common.constant.DataSourceNames;
 import com.jingansi.uav.engine.common.dto.doris.DeviceAttrInfoExportTaskDTO;
+import com.jingansi.uav.engine.common.enums.AsyncExportTypeEnum;
 import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsExportRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,11 +20,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class DorisFlightStatisticsExportService {
 
-    private static final String EXPORT_TYPE = "DORIS_FLIGHT_STATISTICS";
-    private static final int MAX_ACTIVE_TASKS = 3;
-    private static final String FILE_NAME_PREFIX = "flight_statistics";
-    private static final String EXPORT_BIZ_NAME = "飞行统计";
-
     private final AsyncExportCommonService asyncExportCommonService;
     private final DorisFlightStatisticsExportFileBuilder dorisFlightStatisticsExportFileBuilder;
     private final DorisFlightStatisticsAsyncExportWorker dorisFlightStatisticsAsyncExportWorker;
@@ -32,10 +28,7 @@ public class DorisFlightStatisticsExportService {
         // 飞行统计导出只需要把自己的配置和处理逻辑传给公共服务即可。
         return asyncExportCommonService.submitExportTask(
                 request,
-                EXPORT_TYPE,
-                MAX_ACTIVE_TASKS,
-                FILE_NAME_PREFIX,
-                EXPORT_BIZ_NAME,
+                AsyncExportTypeEnum.DORIS_FLIGHT_STATISTICS,
                 dorisFlightStatisticsExportFileBuilder::validateRequest,
                 dorisFlightStatisticsAsyncExportWorker::process);
     }

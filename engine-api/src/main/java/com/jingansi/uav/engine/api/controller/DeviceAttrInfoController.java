@@ -3,11 +3,13 @@ package com.jingansi.uav.engine.api.controller;
 import com.jingansi.uav.engine.biz.device.attr.export.DeviceAttrInfoExportService;
 import com.jingansi.uav.engine.biz.device.attr.query.DeviceAttrInfoQueryService;
 import com.jingansi.uav.engine.biz.flight.statistics.export.DorisFlightStatisticsExportService;
+import com.jingansi.uav.engine.common.dto.PageResultDTO;
 import com.jingansi.uav.engine.common.dto.doris.DeviceAttrInfoLatestRecordDTO;
 import com.jingansi.uav.engine.common.dto.doris.DeviceAttrInfoExportTaskDTO;
 import com.jingansi.uav.engine.common.vo.Response;
 import com.jingansi.uav.engine.common.vo.doris.DeviceAttrInfoExportRequest;
 import com.jingansi.uav.engine.common.vo.doris.DeviceAttrInfoLatestQueryRequest;
+import com.jingansi.uav.engine.common.vo.export.AsyncExportTaskPageRequest;
 import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsExportRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,6 +54,14 @@ public class DeviceAttrInfoController {
     @GetMapping("/export/tasks/{taskNo}")
     public Response<DeviceAttrInfoExportTaskDTO> task(@PathVariable String taskNo) {
         return Response.returnByCode(deviceAttrInfoExportService.getExportTask(taskNo));
+    }
+
+    /**
+     * 按设备 ID 和导出类型分页查询导出任务列表。
+     */
+    @PostMapping("/export/tasks/page")
+    public Response<PageResultDTO<DeviceAttrInfoExportTaskDTO>> tasks(@RequestBody(required = false) AsyncExportTaskPageRequest request) {
+        return Response.returnByCode(deviceAttrInfoExportService.pageExportTasks(request));
     }
 
     /**
