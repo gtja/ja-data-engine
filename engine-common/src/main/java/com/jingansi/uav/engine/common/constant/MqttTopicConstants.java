@@ -8,5 +8,5 @@ public final class MqttTopicConstants {
     /**
      * 设备属性上报。
      */
-    public static final String THING_EVENT_PROPERTY_POST = "sys/+/+/thing/event/property/post";
+    public static final String THING_EVENT_PROPERTY_POST = "sys/00000000002/+/thing/event/property/post";
 }
