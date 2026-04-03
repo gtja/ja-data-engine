@@ -59,8 +59,6 @@ public class DeviceAttrInfoQueryServiceImpl implements DeviceAttrInfoQueryServic
         String startTime = normalizeText(request.getStartTime());
         long offset = (long) (pageNum - 1) * pageSize;
         List<DeviceAttrInfo> records = deviceAttrInfoMapper.selectPageRecords(deviceId, startTime, offset, pageSize);
-        records.sort(Comparator
-                .comparing(DeviceAttrInfo::getAcquireTimestampFormat, Comparator.nullsLast(String::compareTo)));
         List<DeviceAttrInfoLatestRecordDTO> result = records.stream()
                 .map(item -> toLatestRecord(item, propertiesTypes))
                 .collect(Collectors.toList());

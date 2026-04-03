@@ -259,26 +259,7 @@ public class AsyncExportCommonService {
      * 拼接对象存储访问地址。
      */
     private String buildObjectUrl(String bucketName, String objectKey) {
-        String base = firstNonBlank(s3Properties.getExternalPrefix(), s3Properties.getPrefix(), s3Properties.getEndpoint());
-        if (!StringUtils.hasText(base) || !StringUtils.hasText(bucketName) || !StringUtils.hasText(objectKey)) {
-            return null;
-        }
-        return trimTrailingSlash(base) + "/" + bucketName.trim() + "/" + trimLeadingSlash(objectKey);
-    }
-
-    /**
-     * 从多个地址配置中取第一个非空值。
-     */
-    private String firstNonBlank(String... values) {
-        if (values == null) {
-            return null;
-        }
-        for (String value : values) {
-            if (StringUtils.hasText(value)) {
-                return value.trim();
-            }
-        }
-        return null;
+        return   "/" + bucketName.trim() + "/" + trimLeadingSlash(objectKey);
     }
 
     /**

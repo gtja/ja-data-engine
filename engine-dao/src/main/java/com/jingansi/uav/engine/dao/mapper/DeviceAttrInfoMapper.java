@@ -39,6 +39,7 @@ public interface DeviceAttrInfoMapper extends BaseMapper<DeviceAttrInfo> {
             "<if test='startTime != null and startTime != \"\"'>",
             "AND acquire_timestamp_format &gt;= #{startTime} ",
             "</if>",
+            "ORDER BY acquire_timestamp_format ASC",
             "LIMIT #{offset}, #{limit} ",
             "</script>"
     })

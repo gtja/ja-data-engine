@@ -44,12 +44,12 @@ public class DeviceAttrInfoLatestQueryRequest {
     /**
      * 页码，从 1 开始。
      */
-    @JsonAlias({"pageNo", "current"})
+    @JsonAlias({"pageNo", "current", "page"})
     private Integer pageNum = DEFAULT_PAGE_NUM;
 
     /**
      * 每页条数。
      */
-    @JsonAlias({"size", "limit"})
+    @JsonAlias({"size", "limit", "pagesize", "page_size"})
     private Integer pageSize = DEFAULT_PAGE_SIZE;
 }
