@@ -68,34 +68,30 @@ public interface DeviceAttrInfoMapper extends BaseMapper<DeviceAttrInfo> {
                                                       @Param("endTime") String endTime);
 
     /**
-     * 按设备列表和时间范围统计飞行架次、时长、里程增量。
+     * 按单设备和时间范围统计飞行架次、时长、里程增量。
      */
     @Select({
             "<script>",
             "SELECT ",
-            "device_id AS deviceId, ",
-            "MAX(CAST(GET_JSON_STRING(properties, '$.totalFlightSorties') AS BIGINT)) ",
-            "- MIN(CAST(GET_JSON_STRING(properties, '$.totalFlightSorties') AS BIGINT)) AS flightSortiesInRange, ",
-            "MAX(CAST(GET_JSON_STRING(properties, '$.totalFlightTime') AS DOUBLE)) ",
-            "- MIN(CAST(GET_JSON_STRING(properties, '$.totalFlightTime') AS DOUBLE)) AS flightTimeSecondsInRange, ",
-            "MAX(CAST(GET_JSON_STRING(properties, '$.totalFlightDistance') AS DOUBLE)) ",
-            "- MIN(CAST(GET_JSON_STRING(properties, '$.totalFlightDistance') AS DOUBLE)) AS flightDistanceMetersInRange ",
+            "#{deviceId} AS deviceId, ",
+            "MAX(totalFlightSorties) - MIN(totalFlightSorties) AS flightSortiesInRange, ",
+            "MAX(totalFlightTime) - MIN(totalFlightTime) AS flightTimeSecondsInRange, ",
+            "MAX(totalFlightDistance) - MIN(totalFlightDistance) AS flightDistanceMetersInRange ",
+            "FROM (",
+            "SELECT ",
+            "CAST(GET_JSON_STRING(properties, '$.totalFlightSorties') AS BIGINT) AS totalFlightSorties, ",
+            "CAST(GET_JSON_STRING(properties, '$.totalFlightTime') AS DOUBLE) AS totalFlightTime, ",
+            "CAST(GET_JSON_STRING(properties, '$.totalFlightDistance') AS DOUBLE) AS totalFlightDistance ",
             "FROM dwd_device_attr_info ",
             "WHERE device_type = 'UAV' ",
+            "AND device_id = #{deviceId} ",
             "AND acquire_timestamp_format &gt;= #{beginTime} ",
             "AND acquire_timestamp_format &lt;= #{endTime} ",
-            "<if test='deviceIds != null and deviceIds.size() > 0'>",
-            "AND device_id IN ",
-            "<foreach collection='deviceIds' item='deviceId' open='(' separator=',' close=')'>",
-            "#{deviceId}",
-            "</foreach>",
-            "</if>",
-            "GROUP BY device_id ",
-            "ORDER BY flightSortiesInRange DESC, device_id ASC ",
+            ") t",
             "</script>"
     })
-    List<DorisFlightStatisticsRecordDTO> selectFlightStatisticsByDeviceIdsAndTimeRange(@Param("deviceIds") List<String> deviceIds,
-                                                                                        @Param("beginTime") String beginTime,
-                                                                                        @Param("endTime") String endTime);
+    DorisFlightStatisticsRecordDTO selectFlightStatisticsByDeviceIdAndTimeRange(@Param("deviceId") String deviceId,
+                                                                                @Param("beginTime") String beginTime,
+                                                                                @Param("endTime") String endTime);
 
 }

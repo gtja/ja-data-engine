@@ -5,7 +5,7 @@ import com.jingansi.uav.engine.biz.device.IotDeviceService;
 import com.jingansi.uav.engine.common.constant.DataSourceNames;
 import com.jingansi.uav.engine.common.dto.doris.DorisFlightStatisticsRecordDTO;
 import com.jingansi.uav.engine.common.exception.BizException;
-import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsExportRequest;
+import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsAsyncExportRequest;
 import com.jingansi.uav.engine.dao.entity.IotDevice;
 import com.jingansi.uav.engine.dao.mapper.DeviceAttrInfoMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,11 +26,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -55,7 +54,7 @@ public class DorisFlightStatisticsExportFileBuilder {
     /**
      * 校验飞行统计导出请求。
      */
-    public void validateRequest(FlightStatisticsExportRequest request) {
+    public void validateRequest(FlightStatisticsAsyncExportRequest request) {
         if (request == null) {
             throw new BizException("请求参数不能为空");
         }
@@ -65,9 +64,9 @@ public class DorisFlightStatisticsExportFileBuilder {
         if (!StringUtils.hasText(request.getEndTime())) {
             throw new BizException("endTime不能为空");
         }
-        List<String> deviceIds = normalizeDeviceIds(request.getDeviceIds());
-        if (CollectionUtils.isEmpty(deviceIds)) {
-            throw new BizException("deviceIds不能为空");
+        String deviceId = normalizeDeviceId(request.getDeviceId());
+        if (!StringUtils.hasText(deviceId)) {
+            throw new BizException("deviceId不能为空");
         }
 
         LocalDateTime beginDateTime = parseDateTime(request.getBeginTime());
@@ -90,13 +89,14 @@ public class DorisFlightStatisticsExportFileBuilder {
     /**
      * 根据请求构建飞行统计 xlsx 文件。
      */
-    public void writeToFile(FlightStatisticsExportRequest request, File targetFile) {
+    public void writeToFile(FlightStatisticsAsyncExportRequest request, File targetFile) {
         validateRequest(request);
-        List<String> deviceIds = normalizeDeviceIds(request.getDeviceIds());
-        List<DorisFlightStatisticsRecordDTO> records = deviceAttrInfoMapper.selectFlightStatisticsByDeviceIdsAndTimeRange(
-                deviceIds,
+        String deviceId = normalizeDeviceId(request.getDeviceId());
+        DorisFlightStatisticsRecordDTO record = deviceAttrInfoMapper.selectFlightStatisticsByDeviceIdAndTimeRange(
+                deviceId,
                 request.getBeginTime().trim(),
                 request.getEndTime().trim());
+        List<DorisFlightStatisticsRecordDTO> records = record == null ? new ArrayList<>() : Collections.singletonList(record);
         List<DorisFlightStatisticsRecordDTO> exportRows = filterMeaningfulRecords(records);
         if (CollectionUtils.isEmpty(exportRows)) {
             throw new BizException("没有可导出的飞行统计数据");
@@ -152,7 +152,7 @@ public class DorisFlightStatisticsExportFileBuilder {
     }
 
     private void writeSummarySheet(Sheet sheet,
-                                   FlightStatisticsExportRequest request,
+                                   FlightStatisticsAsyncExportRequest request,
                                    List<DorisFlightStatisticsRecordDTO> rows) {
         long totalSorties = 0L;
         BigDecimal totalDistanceKm = BigDecimal.ZERO;
@@ -184,17 +184,8 @@ public class DorisFlightStatisticsExportFileBuilder {
         timeRow.createCell(1).setCellValue(decimalToPlainString(scaleDecimal(totalTimeHours)));
     }
 
-    private List<String> normalizeDeviceIds(List<String> deviceIds) {
-        if (CollectionUtils.isEmpty(deviceIds)) {
-            return new ArrayList<>();
-        }
-        Set<String> normalized = new LinkedHashSet<>();
-        for (String deviceId : deviceIds) {
-            if (StringUtils.hasText(deviceId)) {
-                normalized.add(deviceId.trim());
-            }
-        }
-        return new ArrayList<>(normalized);
+    private String normalizeDeviceId(String deviceId) {
+        return StringUtils.hasText(deviceId) ? deviceId.trim() : null;
     }
 
     private List<DorisFlightStatisticsRecordDTO> filterMeaningfulRecords(List<DorisFlightStatisticsRecordDTO> records) {

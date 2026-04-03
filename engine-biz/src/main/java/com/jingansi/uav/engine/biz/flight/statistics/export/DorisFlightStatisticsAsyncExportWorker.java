@@ -4,7 +4,7 @@ import com.jingansi.uav.engine.biz.infrastructure.export.AsyncExportTaskService;
 import com.jingansi.uav.engine.biz.infrastructure.storage.s3.S3ObjectStorageService;
 import com.jingansi.uav.engine.biz.infrastructure.storage.s3.S3Properties;
 import com.jingansi.uav.engine.common.exception.BizException;
-import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsExportRequest;
+import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsAsyncExportRequest;
 import com.jingansi.uav.engine.dao.entity.AsyncExportTask;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +35,7 @@ public class DorisFlightStatisticsAsyncExportWorker {
      * 异步生成飞行统计导出文件并上传对象存储。
      */
     @Async("exportTaskExecutor")
-    public void process(AsyncExportTask task, FlightStatisticsExportRequest request) {
+    public void process(AsyncExportTask task, FlightStatisticsAsyncExportRequest request) {
         File tempFile = null;
         try {
             asyncExportTaskService.markRunning(task.getId());

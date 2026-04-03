@@ -10,6 +10,7 @@ import com.jingansi.uav.engine.common.vo.Response;
 import com.jingansi.uav.engine.common.vo.doris.DeviceAttrInfoExportRequest;
 import com.jingansi.uav.engine.common.vo.doris.DeviceAttrInfoLatestQueryRequest;
 import com.jingansi.uav.engine.common.vo.export.AsyncExportTaskPageRequest;
+import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsAsyncExportRequest;
 import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsExportRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,7 +45,7 @@ public class DeviceAttrInfoController {
      * 创建异步导出任务。
      */
     @PostMapping("/flightStatistics/export")
-    public Response<DeviceAttrInfoExportTaskDTO> exportFlightStatistics(@RequestBody(required = false) FlightStatisticsExportRequest request) {
+    public Response<DeviceAttrInfoExportTaskDTO> exportFlightStatistics(@RequestBody(required = false) FlightStatisticsAsyncExportRequest request) {
         return Response.returnByCode(dorisFlightStatisticsExportService.submitExportTask(request));
     }
 

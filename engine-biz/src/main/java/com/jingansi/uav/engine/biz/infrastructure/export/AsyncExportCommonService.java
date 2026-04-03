@@ -68,18 +68,7 @@ public class AsyncExportCommonService {
      * @param validator 业务自己的请求校验器
      * @param processor 业务自己的异步处理器，通常直接传 worker::process
      */
-    public <T> Result<DeviceAttrInfoExportTaskDTO> submitExportTask(T request,
-                                                                    AsyncExportTypeEnum exportType,
-                                                                    AsyncExportRequestValidator<T> validator,
-                                                                    AsyncExportTaskProcessor<T> processor) {
-        return submitExportTask(
-                request,
-                null,
-                exportType,
-                DEFAULT_BUSY_MESSAGE,
-                validator,
-                processor);
-    }
+
 
     /**
      * 提交异步导出任务。

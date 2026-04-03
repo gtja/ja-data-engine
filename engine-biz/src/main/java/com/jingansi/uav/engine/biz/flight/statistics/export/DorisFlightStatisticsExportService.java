@@ -6,7 +6,7 @@ import com.jingansi.uav.engine.common.bo.Result;
 import com.jingansi.uav.engine.common.constant.DataSourceNames;
 import com.jingansi.uav.engine.common.dto.doris.DeviceAttrInfoExportTaskDTO;
 import com.jingansi.uav.engine.common.enums.AsyncExportTypeEnum;
-import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsExportRequest;
+import com.jingansi.uav.engine.common.vo.flight.FlightStatisticsAsyncExportRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,10 +24,11 @@ public class DorisFlightStatisticsExportService {
     private final DorisFlightStatisticsExportFileBuilder dorisFlightStatisticsExportFileBuilder;
     private final DorisFlightStatisticsAsyncExportWorker dorisFlightStatisticsAsyncExportWorker;
 
-    public Result<DeviceAttrInfoExportTaskDTO> submitExportTask(FlightStatisticsExportRequest request) {
+    public Result<DeviceAttrInfoExportTaskDTO> submitExportTask(FlightStatisticsAsyncExportRequest request) {
         // 飞行统计导出只需要把自己的配置和处理逻辑传给公共服务即可。
         return asyncExportCommonService.submitExportTask(
                 request,
+                request == null ? null : request.getDeviceId(),
                 AsyncExportTypeEnum.DORIS_FLIGHT_STATISTICS,
                 dorisFlightStatisticsExportFileBuilder::validateRequest,
                 dorisFlightStatisticsAsyncExportWorker::process);
