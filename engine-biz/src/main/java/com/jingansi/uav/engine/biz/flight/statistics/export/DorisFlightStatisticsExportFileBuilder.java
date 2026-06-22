@@ -43,6 +43,7 @@ public class DorisFlightStatisticsExportFileBuilder {
 
     private static final int WORKBOOK_WINDOW_SIZE = 200;
     private static final int DEFAULT_COLUMN_WIDTH = 20;
+    private static final int MAX_QUERY_MONTHS = 1;
     private static final BigDecimal THOUSAND = BigDecimal.valueOf(1000);
     private static final BigDecimal HOUR_SECONDS = BigDecimal.valueOf(3600);
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -83,6 +84,10 @@ public class DorisFlightStatisticsExportFileBuilder {
         long endMillis = endDateTime.atZone(DEFAULT_ZONE).toInstant().toEpochMilli();
         if (beginMillis > now || endMillis > now) {
             throw new BizException("查询时间不能晚于当前时间");
+        }
+        LocalDateTime earliestQueryTime = LocalDateTime.now(DEFAULT_ZONE).minusMonths(MAX_QUERY_MONTHS);
+        if (beginDateTime.isBefore(earliestQueryTime)) {
+            throw new BizException("查询时间不能早于当前时间前一个月");
         }
     }
 

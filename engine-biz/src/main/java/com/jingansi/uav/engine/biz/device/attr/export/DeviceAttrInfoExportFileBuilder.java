@@ -41,9 +41,10 @@ public class DeviceAttrInfoExportFileBuilder {
 
     private static final int WORKBOOK_WINDOW_SIZE = 200;
     private static final int DEFAULT_COLUMN_WIDTH = 20;
+    private static final int MAX_QUERY_MONTHS = 1;
     private static final DateTimeFormatter SECOND_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter MICROSECOND_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
-
+    private static final ZoneId DEFAULT_ZONE = ZoneId.systemDefault();
 
     private final DeviceAttrInfoMapper deviceAttrInfoMapper;
     private final ObjectMapper objectMapper;
@@ -72,6 +73,10 @@ public class DeviceAttrInfoExportFileBuilder {
         }
         if (startDateTime.isAfter(endDateTime)) {
             throw new BizException("开始时间不能大于结束时间");
+        }
+        LocalDateTime earliestQueryTime = LocalDateTime.now(DEFAULT_ZONE).minusMonths(MAX_QUERY_MONTHS);
+        if (startDateTime.isBefore(earliestQueryTime)) {
+            throw new BizException("查询时间不能早于当前时间前一个月");
         }
     }
 
