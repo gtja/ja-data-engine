@@ -43,7 +43,7 @@ public class DeviceAttrInfoExportFileBuilder {
     private static final int DEFAULT_COLUMN_WIDTH = 20;
     private static final DateTimeFormatter SECOND_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter MICROSECOND_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
-    private static final ZoneId DEFAULT_ZONE = ZoneId.systemDefault();
+
 
     private final DeviceAttrInfoMapper deviceAttrInfoMapper;
     private final ObjectMapper objectMapper;
@@ -72,12 +72,6 @@ public class DeviceAttrInfoExportFileBuilder {
         }
         if (startDateTime.isAfter(endDateTime)) {
             throw new BizException("开始时间不能大于结束时间");
-        }
-        long now = System.currentTimeMillis();
-        long startMillis = startDateTime.atZone(DEFAULT_ZONE).toInstant().toEpochMilli();
-        long endMillis = endDateTime.atZone(DEFAULT_ZONE).toInstant().toEpochMilli();
-        if (startMillis > now || endMillis > now) {
-            throw new BizException("查询时间不能晚于当前时间");
         }
     }
 
