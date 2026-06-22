@@ -1,4 +1,4 @@
-FROM registry.cn-hangzhou.aliyuncs.com/jingansi/ubuntu:v1.0-jdk11
+FROM jingan-registry.cn-hangzhou.cr.aliyuncs.com/jingansi/ubuntu:v1.0-jdk11
 
 ENV LANG en_US.utf8
 ENV TZ=PRC
