@@ -79,12 +79,6 @@ public class DorisFlightStatisticsExportFileBuilder {
             throw new BizException("beginTime不能大于endTime");
         }
 
-        long now = System.currentTimeMillis();
-        long beginMillis = beginDateTime.atZone(DEFAULT_ZONE).toInstant().toEpochMilli();
-        long endMillis = endDateTime.atZone(DEFAULT_ZONE).toInstant().toEpochMilli();
-        if (beginMillis > now || endMillis > now) {
-            throw new BizException("查询时间不能晚于当前时间");
-        }
         LocalDateTime earliestQueryTime = LocalDateTime.now(DEFAULT_ZONE).minusMonths(MAX_QUERY_MONTHS);
         if (beginDateTime.isBefore(earliestQueryTime)) {
             throw new BizException("查询时间不能早于当前时间前一个月");
